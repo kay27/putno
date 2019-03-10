@@ -1,0 +1,72 @@
+Putno Fixer by kay27
+
+Algorythm:
+
+1. BACK A CHAR:	8, 37
+2. BUFFER:	48-90, 96-111, 186-222
+3. ELSE: RESET
+
+Ordered virtual keys on PC keyboard:
+
+Backsp	8	<<
+Tab	9	x
+Num_Ent	13	x
+Enter	13	x
+Pause	19	!!!
+CapsLck	20	!!
+Esc	27	x
+Space	32	x
+PgUp	33	x
+PgDown	34	x
+End	35	x
+Home	36	x
+Left	37	<<
+Up	38	x
+Right	39	x
+Down	40	x
+PrtScr	44	---
+Ins	45	?
+Del	46	x
+0-9	48-57	C
+A-Z	65-90	C
+WinL	91	x
+WinR	92	x
+Menu	93	x
+Num_0-0	96-105	C
+Num_*	106	C
+Num_+	107	C
+Num_-	109	C
+Num_.	110	C
+Num_/	111	C
+F1-F12	112-123	x
+Numlock	144	---
+ScrollL	145	---
+ShiftL	160	?
+ShiftL	161	?
+CtrlL	162	---
+CtrlR	163	---
+AltL	164	x
+AltR	165	x
+;	186	C
+=	187	C
+,	188	C
+-	189	C
+.	190	C
+/	191	C
+`	192	C
+[	219	C
+\	220	C
+]	221	C
+'	222	C
+
+
+Change log:
+
+2019-03-10	+More correct virtual code analyzer
+		+Supported keys Left and Backspace (remove a char from the end of buffer)
+
+2019-03-09	+First alpha version
+		+Fixes any last typed word (1000 letters max, hard coded)
+		+Supports only Ctrl+Shift combination (doesn't support Alt+Shift)
+		+Magic switch key hard coded as Pause/Break
+		+.exe for vista, windows 7, 8, 10 x64
