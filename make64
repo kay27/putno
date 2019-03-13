@@ -1,0 +1,16 @@
+g++ -mwindows -static -s -Os putno.cxx -o putno64.exe && \
+strip -s -R .comment -R .gnu.version --strip-unneeded putno64.exe && \
+upx --best putno64.exe && \
+\
+sed -i 's/AUTODETECT_HOTKEY 1/AUTODETECT_HOTKEY 0/g' config.h && \
+g++ -mwindows -static -s -Os putno.cxx -o putno64_alt_shift.exe && \
+strip -s -R .comment -R .gnu.version --strip-unneeded putno64_alt_shift.exe && \
+upx --best putno64_alt_shift.exe && \
+\
+sed -i 's/DEFAULT_HOTKEY_NUMBER 1/DEFAULT_HOTKEY_NUMBER 2/g' config.h && \
+g++ -mwindows -static -s -Os putno.cxx -o putno64_ctrl_shift.exe && \
+strip -s -R .comment -R .gnu.version --strip-unneeded putno64_ctrl_shift.exe && \
+upx --best putno64_ctrl_shift.exe && \
+\
+sed -i 's/DEFAULT_HOTKEY_NUMBER 2/DEFAULT_HOTKEY_NUMBER 1/g' config.h && \
+sed -i 's/AUTODETECT_HOTKEY 0/AUTODETECT_HOTKEY 1/g' config.h
