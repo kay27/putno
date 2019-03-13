@@ -59,8 +59,22 @@ AltR	165	x
 ]	221	C
 '	222	C
 
+Clipboard format compatibility table:
+
+			1 2 3 4 5 6 7 8
+1 CF_BITMAP[less]	x + +
+2 CF_DIB		+ x +
+3 CF_DIBV5		+ + x
+4 CF_ENHMETAFILE	      x +
+5 CF_METAFILEPICT	      + x
+6 CF_OEMTEXT		          x + +
+7 CF_TEXT		          + x +
+8 CF_UNICODETEXT	          + + x
 
 Change log:
+
+2019-03-13	+config.h and compiler options to disable hotkey detection and use
+		hard-coded hotkey
 
 2019-03-12	+Hotkey detection (reads from HKCU\Keyboard Layout\Toggle\Hotkey)
 		Buffer size decreased to 500 chars max

@@ -1,5 +1,5 @@
 // Putno Fixer by kay27
-// version 1.2 for mingw-w64
+// version 1.3 for mingw-w64
 // mailto: kay27@bk.ru
 
 #define _WIN32_WINNT 0x0400
@@ -9,13 +9,15 @@
 #include <vector>
 #include <string>
 
-const int BUFFER_SIZE=500;
+#include "config.h"
+
 HHOOK hKeyboardHook;
 KBDLLHOOKSTRUCT buffer[BUFFER_SIZE];
 int counter = 0, fixing = 0;
 SHORT shift = 0, control = 0, alt = 0;
-char hotkey;
-DWORD key1=164, key2=160;
+#if AUTODETECT_HOTKEY==1
+    char hotkey;
+#endif
 
 inline bool FixLastWord()
 {
@@ -41,16 +43,22 @@ inline bool FixLastWord()
     inp.ki.wVk = key1;
     SendInput(1, &inp, sizeof(INPUT));
 
-    if(key2)
-    {
-        inp.ki.wVk = key2;
-        SendInput(1, &inp, sizeof(INPUT));
-        inp.ki.dwFlags = KEYEVENTF_KEYUP; 
-        SendInput(1, &inp, sizeof(INPUT));
-        inp.ki.wVk = key1;
-    }
-    else
-        inp.ki.dwFlags = KEYEVENTF_KEYUP; 
+#   if AUTODETECT_HOTKEY == 1 || DEFAULT_HOTKEY_NUMBER != 4
+#       if AUTODETECT_HOTKEY == 1
+            if(key2)
+            {
+#       endif
+                inp.ki.wVk = key2;
+                SendInput(1, &inp, sizeof(INPUT));
+                inp.ki.dwFlags = KEYEVENTF_KEYUP; 
+                SendInput(1, &inp, sizeof(INPUT));
+                inp.ki.wVk = key1;
+#       if AUTODETECT_HOTKEY == 1
+            }
+            else
+#       endif
+#   endif
+            inp.ki.dwFlags = KEYEVENTF_KEYUP; 
 
     SendInput(1, &inp, sizeof(INPUT));
 
@@ -114,36 +122,41 @@ __declspec(dllexport) LRESULT CALLBACK KeyboardEvent (int nCode, WPARAM wParam, 
     return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 }
 
-LPBYTE ReadRegValue(HKEY root, LPCSTR key, LPCSTR lpValueName, long unsigned int & lpcbData /* max length (bytes) */)
-{
-    HKEY hKey;
-    if (RegOpenKeyExA(root, key, 0, KEY_READ, &hKey) == ERROR_SUCCESS)
+#if AUTODETECT_HOTKEY==1
+    LPBYTE ReadRegValue(HKEY root, LPCSTR key, LPCSTR lpValueName, long unsigned int & lpcbData /* max length (bytes) */)
     {
-        LPBYTE lpData = new BYTE[lpcbData];
-        if(RegQueryValueExA(hKey, lpValueName, NULL, NULL, lpData, &lpcbData) == ERROR_SUCCESS)
+        HKEY hKey;
+        if (RegOpenKeyExA(root, key, 0, KEY_READ, &hKey) == ERROR_SUCCESS)
         {
+            LPBYTE lpData = new BYTE[lpcbData];
+            if(RegQueryValueExA(hKey, lpValueName, NULL, NULL, lpData, &lpcbData) == ERROR_SUCCESS)
+            {
+                RegCloseKey(hKey);
+                return lpData;
+            }
             RegCloseKey(hKey);
-            return lpData;
         }
-        RegCloseKey(hKey);
+        return nullptr;
     }
-    return nullptr;
-}
+#endif
 
 int main(int argc, char** argv)
 {
-    hotkey = '1'; // Alt+Shift is default
-    {
-        long unsigned int tempSize = 4;
-        LPBYTE tempBuf = ReadRegValue(HKEY_CURRENT_USER, "Keyboard Layout\\Toggle", "Hotkey", tempSize);
-        if(tempBuf != nullptr) { hotkey = tempBuf[0]; delete tempBuf; }
-    }
-    if(hotkey == '2') // Control+Shift
-        key1 = 162;
-    else if(hotkey == '4') // [~`] key
-    {
-        key1 = 192; key2 = 0;
-    }
+
+#   if AUTODETECT_HOTKEY==1
+        hotkey = '1'; // Alt+Shift is default
+        {
+            long unsigned int tempSize = 4;
+            LPBYTE tempBuf = ReadRegValue(HKEY_CURRENT_USER, "Keyboard Layout\\Toggle", "Hotkey", tempSize);
+            if(tempBuf != nullptr) { hotkey = tempBuf[0]; delete tempBuf; }
+        }
+        if(hotkey == '2') // Control+Shift
+            key1 = 162;
+        else if(hotkey == '4') // [~`] key
+        {
+            key1 = 192; key2 = 0;
+        }
+#   endif
 
     hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, (HOOKPROC)KeyboardEvent, NULL, 0);
     MSG message;
