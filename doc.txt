@@ -73,6 +73,8 @@ Clipboard format compatibility table:
 
 Change log:
 
+2019-03-13	v1.4 prevent multiple program start; more fun compilation script
+
 2019-03-13	+config.h and compiler options to disable hotkey detection and use
 		hard-coded hotkey
 

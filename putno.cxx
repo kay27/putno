@@ -1,5 +1,5 @@
 // Putno Fixer by kay27
-// version 1.3 for mingw-w64
+// version 1.4 for mingw-w64
 // mailto: kay27@bk.ru
 
 #define _WIN32_WINNT 0x0400
@@ -142,6 +142,9 @@ __declspec(dllexport) LRESULT CALLBACK KeyboardEvent (int nCode, WPARAM wParam, 
 
 int main(int argc, char** argv)
 {
+    CreateMutex(NULL, TRUE, "PutnoFixer");
+    if(GetLastError() == ERROR_ALREADY_EXISTS)
+        return 1;
 
 #   if AUTODETECT_HOTKEY==1
         hotkey = '1'; // Alt+Shift is default
