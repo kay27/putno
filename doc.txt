@@ -73,6 +73,10 @@ Clipboard format compatibility table:
 
 Change log:
 
+2019-03-18	+various fixes, v1.5
+		+program handles shift key
+		+reset buffer when you type after 3 min delay (see config.h)
+
 2019-03-13	v1.4 prevent multiple program start; more fun compilation script
 
 2019-03-13	+config.h and compiler options to disable hotkey detection and use

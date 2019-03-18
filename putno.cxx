@@ -1,5 +1,5 @@
 // Putno Fixer by kay27
-// version 1.4 for mingw-w64
+// version 1.5 for mingw-w64
 // mailto: kay27@bk.ru
 
 #define _WIN32_WINNT 0x0400
@@ -12,9 +12,10 @@
 #include "config.h"
 
 HHOOK hKeyboardHook;
-KBDLLHOOKSTRUCT buffer[BUFFER_SIZE];
+KBDLLHOOKSTRUCT buffer[BUFFER_SIZE]; // .flags now used to store Shift state
 int counter = 0, fixing = 0;
 SHORT shift = 0, control = 0, alt = 0;
+DWORD lastTime = 0;
 #if AUTODETECT_HOTKEY==1
     char hotkey;
 #endif
@@ -64,12 +65,25 @@ inline bool FixLastWord()
 
     for(auto i=0; i<counter; i++)
     {
+      SHORT shift0 = (SHORT)buffer[i].flags;
+      inp.ki.dwFlags = 0;
+      if(shift0)
+      {
+          inp.ki.wVk = VK_SHIFT;
+          inp.ki.wScan = 0;
+          SendInput(1, &inp, sizeof(INPUT));
+      }
       inp.ki.wVk = buffer[i].vkCode;
       inp.ki.wScan = buffer[i].scanCode;
-      inp.ki.dwFlags = 0;
       SendInput(1, &inp, sizeof(INPUT));
       inp.ki.dwFlags = KEYEVENTF_KEYUP; 
       SendInput(1, &inp, sizeof(INPUT));
+      if(shift0)
+      {
+          inp.ki.wVk = VK_SHIFT;
+          inp.ki.wScan = 0;
+          SendInput(1, &inp, sizeof(INPUT));
+      }
     }
 
     fixing = 0;
@@ -104,10 +118,17 @@ __declspec(dllexport) LRESULT CALLBACK KeyboardEvent (int nCode, WPARAM wParam, 
         if(counter>0) counter--;
     }
 
-    else if( ((vkCode >= 48)&&(vkCode <= 90)) || ((vkCode >= 96)&&(vkCode <= 111)) || ((vkCode >= 186)&&(vkCode <= 222)))
+#if BUFFER_TIMEOUT_SECONDS > 0
+    else if(    (hook.time - lastTime < 1000 * BUFFER_TIMEOUT_SECONDS) // milliseconds
+#else
+    else if(    1
+#endif
+             && ( ((vkCode >= 48)&&(vkCode <= 90)) || ((vkCode >= 96)&&(vkCode <= 111)) || ((vkCode >= 186)&&(vkCode <= 222)) )
+             && (!(control||alt))    )
     {
-        buffer[counter++]=hook;
-        if(counter >= BUFFER_SIZE)
+        buffer[counter]       = hook;
+        buffer[counter].flags = shift;
+        if((++counter) >= BUFFER_SIZE)
         {
             counter = BUFFER_SIZE/2;
             memcpy(buffer, &buffer[BUFFER_SIZE/2], BUFFER_SIZE / 2 * sizeof(KBDLLHOOKSTRUCT));
@@ -116,8 +137,13 @@ __declspec(dllexport) LRESULT CALLBACK KeyboardEvent (int nCode, WPARAM wParam, 
 
     else
     {
-        counter = 0;
+        if((vkCode&(~1)) != 160) //both shift keys
+            counter = 0;
     }
+
+#   if BUFFER_TIMEOUT_SECONDS > 0
+        lastTime = hook.time;
+#   endif
 
     return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 }

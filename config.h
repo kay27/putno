@@ -1,6 +1,8 @@
 #ifndef PUTNO_CONFIG
 #   define PUTNO_CONFIG
 
+// Buffer timeout (0 - disable timeout):
+#   define BUFFER_TIMEOUT_SECONDS 3 * 60
 
 // DEFAULT_HOTKEY_NUMBER macro must be at least SET. Values supported:
 //     2 - for Ctrl+Shift hotkey
