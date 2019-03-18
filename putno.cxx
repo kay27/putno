@@ -1,6 +1,6 @@
 // Putno Fixer by kay27
-// version 1.5 for mingw-w64
-// mailto: kay27@bk.ru
+// version 1.5
+// github.com/kay27/putno
 
 #define _WIN32_WINNT 0x0400
 #pragma comment(lib, "user32.lib")
@@ -12,13 +12,20 @@
 #include "config.h"
 
 HHOOK hKeyboardHook;
+
 KBDLLHOOKSTRUCT buffer[BUFFER_SIZE]; // .flags now used to store Shift state
+
 int counter = 0, fixing = 0;
 SHORT shift = 0, control = 0, alt = 0;
-DWORD lastTime = 0;
+
+#if BUFFER_TIMEOUT_SECONDS > 0
+    DWORD lastTime = 0;
+#endif
+
 #if AUTODETECT_HOTKEY==1
     char hotkey;
 #endif
+
 
 inline bool FixLastWord()
 {
