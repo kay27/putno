@@ -71,6 +71,7 @@ Clipboard format compatibility table:
 7 CF_TEXT		          + x +
 8 CF_UNICODETEXT	          + + x
 
+
 Change log:
 
 2019-03-18	+various fixes, v1.5

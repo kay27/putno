@@ -1,30 +1,34 @@
-// Putno Fixer by kay27
-// version 1.5
-// github.com/kay27/putno
+#include "putno.h"
 
-#define _WIN32_WINNT 0x0400
-#pragma comment(lib, "user32.lib")
+void Switch()
+{
+    INPUT inp;
+    inp.type=INPUT_KEYBOARD;
+    inp.ki.wScan = 0;
+    inp.ki.time = 0;
+    inp.ki.dwExtraInfo = 0;
+    inp.ki.dwFlags = 0;
+    inp.ki.wVk = key1;
+    SendInput(1, &inp, sizeof(INPUT));
+#   if AUTODETECT_HOTKEY == 1 || DEFAULT_HOTKEY_NUMBER != 4
+#       if AUTODETECT_HOTKEY == 1
+            if(key2)
+            {
+#       endif
+                inp.ki.wVk = key2;
+                SendInput(1, &inp, sizeof(INPUT));
+                inp.ki.dwFlags = KEYEVENTF_KEYUP; 
+                SendInput(1, &inp, sizeof(INPUT));
+                inp.ki.wVk = key1;
+#       if AUTODETECT_HOTKEY == 1
+            }
+            else
+#       endif
+#   endif
+            inp.ki.dwFlags = KEYEVENTF_KEYUP; 
 
-#include <windows.h>
-#include <vector>
-#include <string>
-
-#include "config.h"
-
-HHOOK hKeyboardHook;
-
-KBDLLHOOKSTRUCT buffer[BUFFER_SIZE]; // .flags now used to store Shift state
-
-int counter = 0, fixing = 0;
-SHORT shift = 0, control = 0, alt = 0;
-
-#if BUFFER_TIMEOUT_SECONDS > 0
-    DWORD lastTime = 0;
-#endif
-
-#if AUTODETECT_HOTKEY==1
-    char hotkey;
-#endif
+    SendInput(1, &inp, sizeof(INPUT));
+}
 
 
 inline bool FixLastWord()
@@ -47,28 +51,7 @@ inline bool FixLastWord()
       SendInput(1, &inp, sizeof(INPUT));
     }
 
-    inp.ki.dwFlags = 0;
-    inp.ki.wVk = key1;
-    SendInput(1, &inp, sizeof(INPUT));
-
-#   if AUTODETECT_HOTKEY == 1 || DEFAULT_HOTKEY_NUMBER != 4
-#       if AUTODETECT_HOTKEY == 1
-            if(key2)
-            {
-#       endif
-                inp.ki.wVk = key2;
-                SendInput(1, &inp, sizeof(INPUT));
-                inp.ki.dwFlags = KEYEVENTF_KEYUP; 
-                SendInput(1, &inp, sizeof(INPUT));
-                inp.ki.wVk = key1;
-#       if AUTODETECT_HOTKEY == 1
-            }
-            else
-#       endif
-#   endif
-            inp.ki.dwFlags = KEYEVENTF_KEYUP; 
-
-    SendInput(1, &inp, sizeof(INPUT));
+    Switch();
 
     for(auto i=0; i<counter; i++)
     {
@@ -98,6 +81,125 @@ inline bool FixLastWord()
     return true;
 }
 
+
+inline bool FixText(const wchar_t* text)
+{
+    auto len = std::wcslen(text);
+    SHORT buffer[len];
+    for(auto i=0; i<len; i++)
+    {
+        WCHAR w = text[i];
+        auto code = VkKeyScanW(w);
+        buffer[i] = code;
+    }
+
+    Switch();
+
+    INPUT inp;
+    inp.type=INPUT_KEYBOARD;
+    inp.ki.wScan = 0;
+    inp.ki.time = 0;
+    inp.ki.dwExtraInfo = 0;
+    SendInput(1, &inp, sizeof(INPUT));
+
+    for(auto i=0; i<len; i++)
+    {
+        inp.ki.dwFlags = 0;
+
+        if(buffer[i] & 0x100)
+        {
+            inp.ki.wVk = VK_SHIFT;
+            SendInput(1, &inp, sizeof(INPUT));
+        }
+
+        inp.ki.wVk = buffer[i] & 0xFF;
+        SendInput(1, &inp, sizeof(INPUT));
+
+        inp.ki.dwFlags = KEYEVENTF_KEYUP;
+        SendInput(1, &inp, sizeof(INPUT));
+
+        if(buffer[i] & 0x100)
+        {
+            inp.ki.wVk = VK_SHIFT;
+            SendInput(1, &inp, sizeof(INPUT));
+        }
+    }
+}
+
+
+inline bool FixSelection()
+{
+    fixing = 1;
+
+    std::vector<std::pair<UINT, HGLOBAL>> cb_backup;
+    if((CountClipboardFormats() > 0) && OpenClipboard(NULL))
+    {
+        UINT cur_fmt = 0;
+        while((cur_fmt = EnumClipboardFormats(cur_fmt)) != 0)
+            cb_backup.push_back(std::make_pair(cur_fmt, GetClipboardData(cur_fmt)));
+        CloseClipboard();
+    }
+
+    // Unpress Shift key:
+
+    INPUT inp;
+    inp.type=INPUT_KEYBOARD;
+//    inp.ki.wScan = MapVirtualKey(VK_SHIFT, MAPVK_VK_TO_VSC);
+    inp.ki.wScan = 0;
+    inp.ki.time = 0;
+    inp.ki.dwExtraInfo = 0;
+    inp.ki.wVk = VK_SHIFT;
+    inp.ki.dwFlags = KEYEVENTF_KEYUP;
+    SendInput(1, &inp, sizeof(INPUT));
+
+    // Press Ctrl+C (and unpress):
+
+    inp.ki.wVk = VK_CONTROL;
+    inp.ki.dwFlags = 0;
+    SendInput(1, &inp, sizeof(INPUT));
+    inp.ki.wVk = 0x56;
+    SendInput(1, &inp, sizeof(INPUT));
+    inp.ki.dwFlags = KEYEVENTF_KEYUP;;
+    SendInput(1, &inp, sizeof(INPUT));
+    inp.ki.wVk = VK_CONTROL;
+    SendInput(1, &inp, sizeof(INPUT));
+
+    Sleep(1);
+
+    wchar_t* text = nullptr;
+    if(OpenClipboard(NULL))
+    {
+        HGLOBAL hglb = GetClipboardData(CF_UNICODETEXT);
+        if(hglb != NULL)
+        {
+            wchar_t* str = (wchar_t*)GlobalLock(hglb);
+            if(str)
+            {
+                auto byteLength = GlobalSize(str);
+                text = (wchar_t*)memcpy(new wchar_t[byteLength], str, byteLength);
+                GlobalUnlock(hglb);
+            }
+        }
+        CloseClipboard();
+    }
+
+//    if(!text.IsEmpty())
+        FixText(text);
+
+//    cbbackup.Restore();
+
+    // Press Shift key back:
+
+    inp.ki.wVk = VK_SHIFT;
+    inp.ki.dwFlags = 0;
+    SendInput(1, &inp, sizeof(INPUT));
+
+    fixing = 0;
+
+    return true;
+}
+
+
 __declspec(dllexport) LRESULT CALLBACK KeyboardEvent (int nCode, WPARAM wParam, LPARAM lParam)
 {
     if((nCode != HC_ACTION) || ((wParam != WM_KEYDOWN)&&(wParam != WM_KEYUP)))
@@ -115,9 +217,20 @@ __declspec(dllexport) LRESULT CALLBACK KeyboardEvent (int nCode, WPARAM wParam, 
     if((vkCode == 0)||(wParam != WM_KEYDOWN))
         return CallNextHookEx(hKeyboardHook, nCode,wParam,lParam);
 
+#if BUFFER_TIMEOUT_SECONDS > 0
+    if(hook.time - lastTime >= 1000 * BUFFER_TIMEOUT_SECONDS) // milliseconds
+        counter = 0;
+    lastTime = hook.time;
+#endif
+
     if ((!(shift||control||alt)) && (vkCode == VK_PAUSE))
     {
         if(FixLastWord()) return 0;
+    }
+
+    else if (shift && (!(control||alt)) && (vkCode == VK_PAUSE))
+    {
+        if(FixSelection()) return 0;
     }
 
     else if((vkCode == 8)||(vkCode == 37)) // backspace, arrow left
@@ -125,12 +238,7 @@ __declspec(dllexport) LRESULT CALLBACK KeyboardEvent (int nCode, WPARAM wParam, 
         if(counter>0) counter--;
     }
 
-#if BUFFER_TIMEOUT_SECONDS > 0
-    else if(    (hook.time - lastTime < 1000 * BUFFER_TIMEOUT_SECONDS) // milliseconds
-#else
-    else if(    1
-#endif
-             && ( ((vkCode >= 48)&&(vkCode <= 90)) || ((vkCode >= 96)&&(vkCode <= 111)) || ((vkCode >= 186)&&(vkCode <= 222)) )
+    else if(    ( ((vkCode >= 48)&&(vkCode <= 90)) || ((vkCode >= 96)&&(vkCode <= 111)) || ((vkCode >= 186)&&(vkCode <= 222)) )
              && (!(control||alt))    )
     {
         buffer[counter]       = hook;
@@ -147,10 +255,6 @@ __declspec(dllexport) LRESULT CALLBACK KeyboardEvent (int nCode, WPARAM wParam, 
         if((vkCode&(~1)) != 160) //both shift keys
             counter = 0;
     }
-
-#   if BUFFER_TIMEOUT_SECONDS > 0
-        lastTime = hook.time;
-#   endif
 
     return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 }
@@ -172,6 +276,7 @@ __declspec(dllexport) LRESULT CALLBACK KeyboardEvent (int nCode, WPARAM wParam, 
         return nullptr;
     }
 #endif
+
 
 int main(int argc, char** argv)
 {
