@@ -85,12 +85,37 @@ inline bool FixLastWord()
 inline bool FixText(const wchar_t* text)
 {
     auto len = std::wcslen(text);
+    int j=0;
     SHORT buffer[len];
+    LANGID oldLang = GetUserDefaultUILanguage();
+    LANGID lang = oldLang;
+    LANGID lang0 = oldLang;
     for(auto i=0; i<len; i++)
     {
         WCHAR w = text[i];
-        auto code = VkKeyScanW(w);
-        buffer[i] = code;
+        SHORT code;
+        do
+        {
+            code = VkKeyScanW(w);
+            if(code < 0)
+            {
+                lang0 = lang;
+                Switch();
+                lang = GetUserDefaultUILanguage();
+            }
+        } while((code<0)&&(lang!=lang0));
+
+        if(code < 0)
+            continue;
+        buffer[j++] = code;
+    }
+    len = j;
+
+    for(auto i=1; i<5; i++)
+    {
+        if(GetUserDefaultUILanguage() == oldLang)
+            break;
+        Switch();
     }
 
     Switch();
@@ -100,30 +125,42 @@ inline bool FixText(const wchar_t* text)
     inp.ki.wScan = 0;
     inp.ki.time = 0;
     inp.ki.dwExtraInfo = 0;
-    SendInput(1, &inp, sizeof(INPUT));
 
     for(auto i=0; i<len; i++)
     {
-        inp.ki.dwFlags = 0;
-
-        if(buffer[i] & 0x100)
+        auto vk = buffer[i] & 0xFF;
+        if( ((vk >= 48)&&(vk <= 90)) || ((vk >= 96)&&(vk <= 111)) || ((vk >= 186)&&(vk <= 222)) || (vk==9) || (vk==13) || (vk==32)) 
         {
-            inp.ki.wVk = VK_SHIFT;
+            bool shift = buffer[i] & 0x100;
+
+            inp.ki.dwFlags = 0;
+            if(shift)
+            {
+                inp.ki.wVk = VK_SHIFT;
+                SendInput(1, &inp, sizeof(INPUT));
+            }
+
+            inp.ki.wVk = vk;
             SendInput(1, &inp, sizeof(INPUT));
-        }
 
-        inp.ki.wVk = buffer[i] & 0xFF;
-        SendInput(1, &inp, sizeof(INPUT));
-
-        inp.ki.dwFlags = KEYEVENTF_KEYUP;
-        SendInput(1, &inp, sizeof(INPUT));
-
-        if(buffer[i] & 0x100)
-        {
-            inp.ki.wVk = VK_SHIFT;
+            inp.ki.dwFlags = KEYEVENTF_KEYUP;
             SendInput(1, &inp, sizeof(INPUT));
+
+            if(shift)
+            {
+                inp.ki.wVk = VK_SHIFT;
+                SendInput(1, &inp, sizeof(INPUT));
+            }
         }
     }
+
+    for(auto i=1; i<100; i++)
+    {
+        if(GetUserDefaultUILanguage() == oldLang)
+            break;
+        Switch();
+    }
+
 }
 
 
@@ -132,13 +169,13 @@ inline bool FixSelection()
     fixing = 1;
 
     std::vector<std::pair<UINT, HGLOBAL>> cb_backup;
-    if((CountClipboardFormats() > 0) && OpenClipboard(NULL))
-    {
-        UINT cur_fmt = 0;
-        while((cur_fmt = EnumClipboardFormats(cur_fmt)) != 0)
-            cb_backup.push_back(std::make_pair(cur_fmt, GetClipboardData(cur_fmt)));
-        CloseClipboard();
-    }
+//    if((CountClipboardFormats() > 0) && OpenClipboard(NULL))
+//    {
+//        UINT cur_fmt = 0;
+//        while((cur_fmt = EnumClipboardFormats(cur_fmt)) != 0)
+//            cb_backup.push_back(std::make_pair(cur_fmt, GetClipboardData(cur_fmt)));
+//        CloseClipboard();
+//    }
 
     // Unpress Shift key:
 

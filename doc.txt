@@ -71,6 +71,8 @@ Clipboard format compatibility table:
 7 CF_TEXT		          + x +
 8 CF_UNICODETEXT	          + + x
 
+https://www.codeproject.com/articles/11372/webcontrols
+
 
 Change log:
 
